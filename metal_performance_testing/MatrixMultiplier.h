@@ -8,6 +8,8 @@
 #ifndef MatrixMultiplier_h
 #define MatrixMultiplier_h
 
+#include <vector>
+
 #include "Foundation/Foundation.hpp"
 #include "Metal/Metal.hpp"
 
@@ -30,7 +32,12 @@ public:
     /**
      * FOR LOCAL TESTING
      */
-    void batch_allocate_memory(int rows_X, int cols_X, int inner_dim, int batch_size);
+    void batch_allocate_memory(int rows_X, int cols_X, int inner_dim, int num_weights);
+
+    /**
+     * FOR LOCAL TESTING
+     */
+    void sep_allocate_memory(int rows_X, int cols_X, int inner_dim, int num_weights);
 
     /**
      * Initialize the data arrays in the matrices.
@@ -41,6 +48,11 @@ public:
      * FOR LOCAL TESTING
      */
     void batch_initialize_data();
+
+    /**
+     * FOR LOCAL TESTING
+     */
+    void sep_initialize_data();
 
     /**
      * Just modify a tiny part of the data on the CPU side.
@@ -54,7 +66,12 @@ public:
      * Run the Metal shader on GPU.
      */
     void run_multiply_on_gpu();
-    
+
+    /**
+     * FOR LOCAL TESTING
+     */
+    void multiply_on_sep_weights_on_gpu();
+
     /**
      * Run shader "mat_mul_opt1".
      */
@@ -93,12 +110,14 @@ private:
     MTL::Buffer *m_device_buffer_X_ptr;
     // Device pointer to struct containing the shader parameters.
     MTL::Buffer* m_device_buffer_params_ptr;
-    
+
+    // FOR LOCAL TESTING
+    std::vector<MTL::Buffer*> m_device_buffer_weight_ptrs;
     
     int m_rows_X;
     int m_cols_X;
     int m_cols_A;
-    int m_batch_size;
+    int m_num_weights;
 };
 
 #endif /* MatrixMultiplier_h */

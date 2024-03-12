@@ -49,13 +49,13 @@ void run_mat_mult_shaders() {
     //const int cols_X = 768;
     //const int inner_dim = 512;
     
-    const int rows_X = 1024;
-    const int cols_X = 1024;
-    const int inner_dim = 1024;
+    // const int rows_X = 1024;
+    // const int cols_X = 1024;
+    // const int inner_dim = 1024;
     
-    //const int rows_X = 2048;
-    //const int cols_X = 2048;
-    //const int inner_dim = 2048;
+    // const int rows_X = 2048;
+    // const int cols_X = 2048;
+    // const int inner_dim = 2048;
     
     //const int rows_X = 3000;
     //const int cols_X = 4000;
@@ -68,107 +68,132 @@ void run_mat_mult_shaders() {
     //const int rows_X = 8192;
     //const int cols_X = 8192;
     //const int inner_dim = 8192;
-    
+
+    const int rows_X = 32;
+    const int cols_X = 8192;
+    const int inner_dim = 8192;
+
     cout << "Running Experiments 1 through 3: matrix multiplication example with naive and optimized shaders." << endl;
     
     // Get the GPU device.
     MTL::Device *device = MTL::CreateSystemDefaultDevice();
-    
-    // The name of the shader to run.
+
     const string shader_name = "mat_mul_simple1";
     
     MatrixMultiplier multiplier(device, shader_name);
-    multiplier.allocate_memory(rows_X, cols_X, inner_dim);
-    multiplier.initialize_data();
+    multiplier.sep_allocate_memory(rows_X, cols_X, inner_dim, 400);
+    multiplier.sep_initialize_data();
     
-    // Perform the multiplication
-    multiplier.run_multiply_on_gpu();
+    multiplier.multiply_on_sep_weights_on_gpu();
     
-    // Verify that it computes the correct result
-    multiplier.check_results();
-    
-    const int loop_count = 200;
+    const int n_samples = 20;
     
     float microsec_per_call;
     // Benchmark the Metal code
     
     cout << "Running benchmark for Metal shader: " << shader_name << endl;
-    microsec_per_call = benchmark(loop_count, [&] () {
+    microsec_per_call = benchmark(n_samples, [&] () {
         // Perform the multiplication
-        multiplier.run_multiply_on_gpu();
+        multiplier.multiply_on_sep_weights_on_gpu();
     });
     cout << matmul_time_to_gflops(rows_X, cols_X, inner_dim, microsec_per_call) << " GFLOPS" << endl;
     cout << "\n-------------------------\n" << endl;
+
+    // // The name of the shader to run.
+    // const string shader_name = "mat_mul_simple1";
     
-    // Switch to the NVIDIA example optimized shader.
-    const string shader_name_nv_optimized = "mat_mul_optimized_nv";
-    multiplier.change_shader(shader_name_nv_optimized);
-    multiplier.initialize_data();
-    // Perform the multiplication
-    multiplier.run_multiply_on_gpu();
-    // Verify that it computes the correct result
-    multiplier.check_results();
+    // MatrixMultiplier multiplier(device, shader_name);
+    // multiplier.allocate_memory(rows_X, cols_X, inner_dim);
+    // multiplier.initialize_data();
     
-    cout << "Running benchmark for Metal shader: " << shader_name_nv_optimized << endl;
-    microsec_per_call = benchmark(loop_count, [&] () {
-        // Perform the multiplication
-        multiplier.run_multiply_on_gpu();
-    });
-    cout << matmul_time_to_gflops(rows_X, cols_X, inner_dim, microsec_per_call) << " GFLOPS" << endl;
-    cout << "\n-------------------------\n" << endl;
+    // // Perform the multiplication
+    // multiplier.run_multiply_on_gpu();
     
-    // Switch to the my optimized shader v1.
-    const string shader_name_mat_mul_opt1 = "mat_mul_opt1";
-    multiplier.change_shader(shader_name_mat_mul_opt1);
-    multiplier.initialize_data();
-    // Perform the multiplication
-    multiplier.run_multiply_on_gpu_mat_mul_opt1();
-    // Verify that it computes the correct result
-    multiplier.check_results();
+    // // Verify that it computes the correct result
+    // multiplier.check_results();
     
-    cout << "Running benchmark for Metal shader: " << shader_name_mat_mul_opt1 << endl;
-    microsec_per_call = benchmark(loop_count, [&] () {
-        // Perform the multiplication
-        multiplier.run_multiply_on_gpu_mat_mul_opt1();
-    });
-    cout << matmul_time_to_gflops(rows_X, cols_X, inner_dim, microsec_per_call) << " GFLOPS" << endl;
-    cout << "\n-------------------------\n" << endl;
+    // const int loop_count = 200;
     
-    // Switch to the my optimized shader v2.
-    const string shader_name_mat_mul_opt2 = "mat_mul_opt2";
-    multiplier.change_shader(shader_name_mat_mul_opt2);
-    multiplier.initialize_data();
-    // Perform the multiplication
-    multiplier.run_multiply_on_gpu_mat_mul_opt2();
-    // Verify that it computes the correct result
-    multiplier.check_results();
+    // float microsec_per_call;
+    // // Benchmark the Metal code
     
-    cout << "Running benchmark for Metal shader: " << shader_name_mat_mul_opt2 << endl;
-    microsec_per_call = benchmark(loop_count, [&] () {
-        // Perform the multiplication
-        multiplier.run_multiply_on_gpu_mat_mul_opt2();
-    });
-    cout << matmul_time_to_gflops(rows_X, cols_X, inner_dim, microsec_per_call) << " GFLOPS" << endl;
-    cout << "\n-------------------------\n" << endl;
+    // cout << "Running benchmark for Metal shader: " << shader_name << endl;
+    // microsec_per_call = benchmark(loop_count, [&] () {
+    //     // Perform the multiplication
+    //     multiplier.run_multiply_on_gpu();
+    // });
+    // cout << matmul_time_to_gflops(rows_X, cols_X, inner_dim, microsec_per_call) << " GFLOPS" << endl;
+    // cout << "\n-------------------------\n" << endl;
     
-    const int naive_loop_count = 0; // Set to 0 for large matrix sizes because slow.
-    if (naive_loop_count > 0) {
-        cout << "Running benchmark for naive CPU"<< endl;
-        microsec_per_call = benchmark(loop_count, [&] () {
-            // Perform the multiplication
-            multiplier.run_on_cpu_naive_single_thread();
-        });
-        cout << matmul_time_to_gflops(rows_X, cols_X, inner_dim, microsec_per_call) << " GFLOPS" << endl;
-        cout << "\n-------------------------\n" << endl;
-    }
+    // // Switch to the NVIDIA example optimized shader.
+    // const string shader_name_nv_optimized = "mat_mul_optimized_nv";
+    // multiplier.change_shader(shader_name_nv_optimized);
+    // multiplier.initialize_data();
+    // // Perform the multiplication
+    // multiplier.run_multiply_on_gpu();
+    // // Verify that it computes the correct result
+    // multiplier.check_results();
     
-    cout << "Running benchmark for Accelerate BLAS sgemm on CPU"<< endl;
-    microsec_per_call = benchmark(loop_count, [&] () {
-        // Perform the multiplication
-        multiplier.run_on_cpu_accelerate_blas();
-    });
-    cout << matmul_time_to_gflops(rows_X, cols_X, inner_dim, microsec_per_call) << " GFLOPS" << endl;
-    cout << "\n-------------------------\n" << endl;
+    // cout << "Running benchmark for Metal shader: " << shader_name_nv_optimized << endl;
+    // microsec_per_call = benchmark(loop_count, [&] () {
+    //     // Perform the multiplication
+    //     multiplier.run_multiply_on_gpu();
+    // });
+    // cout << matmul_time_to_gflops(rows_X, cols_X, inner_dim, microsec_per_call) << " GFLOPS" << endl;
+    // cout << "\n-------------------------\n" << endl;
+    
+    // // Switch to the my optimized shader v1.
+    // const string shader_name_mat_mul_opt1 = "mat_mul_opt1";
+    // multiplier.change_shader(shader_name_mat_mul_opt1);
+    // multiplier.initialize_data();
+    // // Perform the multiplication
+    // multiplier.run_multiply_on_gpu_mat_mul_opt1();
+    // // Verify that it computes the correct result
+    // multiplier.check_results();
+    
+    // cout << "Running benchmark for Metal shader: " << shader_name_mat_mul_opt1 << endl;
+    // microsec_per_call = benchmark(loop_count, [&] () {
+    //     // Perform the multiplication
+    //     multiplier.run_multiply_on_gpu_mat_mul_opt1();
+    // });
+    // cout << matmul_time_to_gflops(rows_X, cols_X, inner_dim, microsec_per_call) << " GFLOPS" << endl;
+    // cout << "\n-------------------------\n" << endl;
+    
+    // // Switch to the my optimized shader v2.
+    // const string shader_name_mat_mul_opt2 = "mat_mul_opt2";
+    // multiplier.change_shader(shader_name_mat_mul_opt2);
+    // multiplier.initialize_data();
+    // // Perform the multiplication
+    // multiplier.run_multiply_on_gpu_mat_mul_opt2();
+    // // Verify that it computes the correct result
+    // multiplier.check_results();
+    
+    // cout << "Running benchmark for Metal shader: " << shader_name_mat_mul_opt2 << endl;
+    // microsec_per_call = benchmark(loop_count, [&] () {
+    //     // Perform the multiplication
+    //     multiplier.run_multiply_on_gpu_mat_mul_opt2();
+    // });
+    // cout << matmul_time_to_gflops(rows_X, cols_X, inner_dim, microsec_per_call) << " GFLOPS" << endl;
+    // cout << "\n-------------------------\n" << endl;
+    
+    // const int naive_loop_count = 0; // Set to 0 for large matrix sizes because slow.
+    // if (naive_loop_count > 0) {
+    //     cout << "Running benchmark for naive CPU"<< endl;
+    //     microsec_per_call = benchmark(loop_count, [&] () {
+    //         // Perform the multiplication
+    //         multiplier.run_on_cpu_naive_single_thread();
+    //     });
+    //     cout << matmul_time_to_gflops(rows_X, cols_X, inner_dim, microsec_per_call) << " GFLOPS" << endl;
+    //     cout << "\n-------------------------\n" << endl;
+    // }
+    
+    // cout << "Running benchmark for Accelerate BLAS sgemm on CPU"<< endl;
+    // microsec_per_call = benchmark(loop_count, [&] () {
+    //     // Perform the multiplication
+    //     multiplier.run_on_cpu_accelerate_blas();
+    // });
+    // cout << matmul_time_to_gflops(rows_X, cols_X, inner_dim, microsec_per_call) << " GFLOPS" << endl;
+    // cout << "\n-------------------------\n" << endl;
 }
 
 void run_interleaved() {
@@ -301,5 +326,5 @@ int main(int argc, char *argv[])
     run_mat_mult_shaders();
     
     // Run interleaved computations on CPU and GPU.
-    run_interleaved();
+    // run_interleaved();
 }
