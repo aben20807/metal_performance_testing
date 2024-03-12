@@ -26,12 +26,22 @@ public:
      *
      */
     void allocate_memory(int rows_X, int cols_X, int inner_dim);
-    
+
+    /**
+     * FOR LOCAL TESTING
+     */
+    void batch_allocate_memory(int rows_X, int cols_X, int inner_dim, int batch_size);
+
     /**
      * Initialize the data arrays in the matrices.
      */
     void initialize_data();
     
+    /**
+     * FOR LOCAL TESTING
+     */
+    void batch_initialize_data();
+
     /**
      * Just modify a tiny part of the data on the CPU side.
      */
@@ -88,6 +98,7 @@ private:
     int m_rows_X;
     int m_cols_X;
     int m_cols_A;
+    int m_batch_size;
 };
 
 #endif /* MatrixMultiplier_h */

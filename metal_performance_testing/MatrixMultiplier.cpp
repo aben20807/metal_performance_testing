@@ -79,6 +79,27 @@ void MatrixMultiplier::allocate_memory(int rows_X, int cols_X, int inner_dim) {
     m_device_buffer_params_ptr = m_device_ptr->newBuffer(sizeof(MatMulParams), MTL::ResourceStorageModeShared);
 }
 
+void MatrixMultiplier::batch_allocate_memory(int rows_X, int cols_X, int inner_dim, int batch_size)
+{
+    m_rows_X = rows_X;
+    m_cols_X = cols_X;
+    m_cols_A = inner_dim;
+    m_batch_size = batch_size;
+
+    // Allocate shared GPU/CPU buffers for the matrices.
+    m_device_buffer_A_ptr = m_device_ptr->newBuffer(m_rows_X * m_cols_A * sizeof(float), MTL::ResourceStorageModeShared);
+    m_device_buffer_B_ptr = m_device_ptr->newBuffer(m_cols_A * m_cols_X * m_batch_size * sizeof(float), MTL::ResourceStorageModeShared);
+    m_device_buffer_X_ptr = m_device_ptr->newBuffer(m_rows_X * m_cols_X * sizeof(float), MTL::ResourceStorageModeShared);
+
+    // This is how we pass parameter values into our custom shader.
+    // Steps to pass parameters (other than the data buffers) to a kernel:
+    // - Decide which parameters the custom shader needs and make a struct to contain them.
+    // - You can also define the struct in a header file and include it here and in the .metal files to avoid code duplication
+    // - Allocate enough device buffer storage to contain the struct and reuse it.
+    // Create a device buffer with enough storage for our MatMulParams struct.
+    m_device_buffer_params_ptr = m_device_ptr->newBuffer(sizeof(MatMulParams), MTL::ResourceStorageModeShared);
+}
+
 void MatrixMultiplier::initialize_data()
 {
     // Get CPU pointers to the same buffers and create a Matrix for each one.
@@ -99,6 +120,32 @@ void MatrixMultiplier::initialize_data()
     //set_value(A, 3.0);
     //set_value(B, 2.0);
     
+    // The matricies are now initialized with random values.
+    // Note that even though we initialized them
+    // on the CPU and the next computations on them will happen on the GPU, we do not need to copy
+    // the initialized values back to the GPU.
+}
+
+void MatrixMultiplier::batch_initialize_data()
+{
+    // Get CPU pointers to the same buffers and create a Matrix for each one.
+    // Note that this apparantly does not make a "CPU copy" of the data but instead just
+    // provides a pointer to the same underlying data that can be used by CPU code.
+
+    // Create a Matrix of floats passing the "CPU" buffer pointer for
+    // its backing array. The Matrix class uses row-major ordering.
+    Matrix<float> A(static_cast<float *>(m_device_buffer_A_ptr->contents()), {m_rows_X, m_cols_A});
+    Matrix<float> B(static_cast<float *>(m_device_buffer_B_ptr->contents()), {m_cols_A, m_cols_X, m_batch_size});
+
+    // Let's randomize the two input matricies.
+    // This runs on the CPU (refer to the implementation in Utilities.cpp)
+    randomize_uniform(A, -1.0f, 1.0f);
+    randomize_uniform(B, -1.0f, 1.0f);
+
+    // Or you could set all values to be the same for easier debugging:
+    // set_value(A, 3.0);
+    // set_value(B, 2.0);
+
     // The matricies are now initialized with random values.
     // Note that even though we initialized them
     // on the CPU and the next computations on them will happen on the GPU, we do not need to copy
