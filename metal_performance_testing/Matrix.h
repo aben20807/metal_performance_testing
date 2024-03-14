@@ -916,7 +916,7 @@ public:
      * Return the total number of elements in the Matrix. This value is the product of the dimension sizes that
      * were supplied to the constructor.
      */
-    int size() const {
+    long size() const {
         return m_size;
     }
 
@@ -1127,7 +1127,7 @@ public:
 private:
 
     // Number of elements in this matrix.
-    int m_size;
+    long m_size;
     // Number of dimensions.
     int m_order;
     // m_extents[i] is the size of the i'th dimension (0-based).
@@ -1153,8 +1153,8 @@ private:
 #endif
 
     // Used by constructor that takes extents as parameter.
-    static int extents_to_size(const std::vector<int> &extents) {
-        int elem_count = 1;
+    static long extents_to_size(const std::vector<int> &extents) {
+        long elem_count = 1;
         for (size_t i = 0; i < extents.size(); ++i) {
             elem_count *= extents[i];
         }

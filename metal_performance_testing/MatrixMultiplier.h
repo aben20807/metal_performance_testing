@@ -73,6 +73,11 @@ public:
     void multiply_on_sep_weights_on_gpu();
 
     /**
+     * FOR LOCAL TESTING
+     */
+    void multiply_on_batch_weights_on_gpu();
+
+    /**
      * Run shader "mat_mul_opt1".
      */
     void run_multiply_on_gpu_mat_mul_opt1();

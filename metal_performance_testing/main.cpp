@@ -69,6 +69,7 @@ void run_mat_mult_shaders() {
     //const int cols_X = 8192;
     //const int inner_dim = 8192;
 
+    // FOR LOCAL TESTING
     const int rows_X = 32;
     const int cols_X = 8192;
     const int inner_dim = 8192;
@@ -78,8 +79,12 @@ void run_mat_mult_shaders() {
     // Get the GPU device.
     MTL::Device *device = MTL::CreateSystemDefaultDevice();
 
+    cout << "Max buffer length: " << device->maxBufferLength() << " bytes" << endl;
+
+    // FOR LOCAL TESTING
     const string shader_name = "mat_mul_simple1";
-    
+
+    {
     MatrixMultiplier multiplier(device, shader_name);
     multiplier.sep_allocate_memory(rows_X, cols_X, inner_dim, 400);
     multiplier.sep_initialize_data();
@@ -91,14 +96,36 @@ void run_mat_mult_shaders() {
     float microsec_per_call;
     // Benchmark the Metal code
     
-    cout << "Running benchmark for Metal shader: " << shader_name << endl;
+    cout << "Running benchmark for Metal shader: " << shader_name << " with sep loading strategy" << endl;
     microsec_per_call = benchmark(n_samples, [&] () {
         // Perform the multiplication
         multiplier.multiply_on_sep_weights_on_gpu();
     });
     cout << matmul_time_to_gflops(rows_X, cols_X, inner_dim, microsec_per_call) << " GFLOPS" << endl;
     cout << "\n-------------------------\n" << endl;
+    }
 
+    // {
+    // MatrixMultiplier multiplier(device, shader_name);
+    // multiplier.batch_allocate_memory(rows_X, cols_X, inner_dim, 400);
+    // multiplier.batch_initialize_data();
+    
+    // multiplier.multiply_on_batch_weights_on_gpu();
+
+    // const int n_samples = 20;
+
+    // float microsec_per_call;
+    // // Benchmark the Metal code
+
+    // cout << "Running benchmark for Metal shader: " << shader_name << " with batch loading strategy" << endl;
+    // microsec_per_call = benchmark(n_samples, [&] () {
+    //     // Perform the multiplication
+    //     multiplier.multiply_on_batch_weights_on_gpu();
+    // });
+    // cout << matmul_time_to_gflops(rows_X, cols_X, inner_dim, microsec_per_call) << " GFLOPS" << endl;
+    // cout << "\n-------------------------\n" << endl;
+    // }
+   
     // // The name of the shader to run.
     // const string shader_name = "mat_mul_simple1";
     
@@ -320,7 +347,7 @@ void run_interleaved() {
     cout << "\n-------------------------\n" << endl;
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
     // Matrix multiplication example using each shader.
     run_mat_mult_shaders();

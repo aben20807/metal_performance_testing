@@ -79,6 +79,7 @@ void MatrixMultiplier::allocate_memory(int rows_X, int cols_X, int inner_dim) {
     m_device_buffer_params_ptr = m_device_ptr->newBuffer(sizeof(MatMulParams), MTL::ResourceStorageModeShared);
 }
 
+// FOR LOCAL TESTING
 void MatrixMultiplier::batch_allocate_memory(int rows_X, int cols_X, int inner_dim, int num_weights)
 {
     m_rows_X = rows_X;
@@ -86,20 +87,18 @@ void MatrixMultiplier::batch_allocate_memory(int rows_X, int cols_X, int inner_d
     m_cols_A = inner_dim;
     m_num_weights = num_weights;
 
-    // Allocate shared GPU/CPU buffers for the matrices.
+    unsigned long weights_length = (unsigned long) m_cols_A * m_cols_X * m_num_weights * sizeof(float);
+    cout << "size of weights to be allocated: " << weights_length << " bytes" << endl;
+
     m_device_buffer_A_ptr = m_device_ptr->newBuffer(m_rows_X * m_cols_A * sizeof(float), MTL::ResourceStorageModeShared);
-    m_device_buffer_B_ptr = m_device_ptr->newBuffer(m_cols_A * m_cols_X * m_num_weights * sizeof(float), MTL::ResourceStorageModeShared);
+    m_device_buffer_B_ptr = m_device_ptr->newBuffer(weights_length, MTL::ResourceStorageModeShared);
+    cout << m_device_buffer_B_ptr->length() << " bytes" << endl;
     m_device_buffer_X_ptr = m_device_ptr->newBuffer(m_rows_X * m_cols_X * sizeof(float), MTL::ResourceStorageModeShared);
 
-    // This is how we pass parameter values into our custom shader.
-    // Steps to pass parameters (other than the data buffers) to a kernel:
-    // - Decide which parameters the custom shader needs and make a struct to contain them.
-    // - You can also define the struct in a header file and include it here and in the .metal files to avoid code duplication
-    // - Allocate enough device buffer storage to contain the struct and reuse it.
-    // Create a device buffer with enough storage for our MatMulParams struct.
     m_device_buffer_params_ptr = m_device_ptr->newBuffer(sizeof(MatMulParams), MTL::ResourceStorageModeShared);
 }
 
+// FOR LOCAL TESTING
 void MatrixMultiplier::sep_allocate_memory(int rows_X, int cols_X, int inner_dim, int num_weights)
 {
     m_rows_X = rows_X;
@@ -146,42 +145,25 @@ void MatrixMultiplier::initialize_data()
     // the initialized values back to the GPU.
 }
 
+// FOR LOCAL TESTING
 void MatrixMultiplier::batch_initialize_data()
 {
-    // Get CPU pointers to the same buffers and create a Matrix for each one.
-    // Note that this apparantly does not make a "CPU copy" of the data but instead just
-    // provides a pointer to the same underlying data that can be used by CPU code.
-
-    // Create a Matrix of floats passing the "CPU" buffer pointer for
-    // its backing array. The Matrix class uses row-major ordering.
     Matrix<float> A(static_cast<float *>(m_device_buffer_A_ptr->contents()), {m_rows_X, m_cols_A});
-    Matrix<float> B(static_cast<float *>(m_device_buffer_B_ptr->contents()), {m_cols_A, m_cols_X, m_num_weights});
+    Matrix<float> B(static_cast<float *>(m_device_buffer_B_ptr->contents()), {m_num_weights, m_cols_A, m_cols_X});
 
-    // Let's randomize the two input matricies.
-    // This runs on the CPU (refer to the implementation in Utilities.cpp)
-    randomize_uniform(A, -1.0f, 1.0f);
-    randomize_uniform(B, -1.0f, 1.0f);
-
-    // Or you could set all values to be the same for easier debugging:
-    // set_value(A, 3.0);
-    // set_value(B, 2.0);
-
-    // The matricies are now initialized with random values.
-    // Note that even though we initialized them
-    // on the CPU and the next computations on them will happen on the GPU, we do not need to copy
-    // the initialized values back to the GPU.
+    dummy_randomize(A, -1.0f, 1.0f);
+    dummy_randomize(B, -1.0f, 1.0f);
 }
 
+// FOR LOCAL TESTING
 void MatrixMultiplier::sep_initialize_data()
 {
-    // Create a Matrix of floats passing the "CPU" buffer pointer for
-    // its backing array. The Matrix class uses row-major ordering.
     Matrix<float> A(static_cast<float *>(m_device_buffer_A_ptr->contents()), {m_rows_X, m_cols_A});
-    randomize_uniform(A, -1.0f, 1.0f);
+    dummy_randomize(A, -1.0f, 1.0f);
 
     for (int i = 0; i < m_num_weights; ++i) {
         Matrix<float> B(static_cast<float *>(m_device_buffer_weight_ptrs[i]->contents()), {m_cols_A, m_cols_X});
-        randomize_uniform(B, -1.0f, 1.0f);
+        dummy_randomize(B, -1.0f, 1.0f);
     }
 }
 
@@ -246,6 +228,7 @@ void MatrixMultiplier::run_multiply_on_gpu()
     commandBuffer->waitUntilCompleted();
 }
 
+// FOR LOCAL TESTING
 void MatrixMultiplier::multiply_on_sep_weights_on_gpu()
 {
     MatMulParams *params = (MatMulParams *)m_device_buffer_params_ptr->contents();
@@ -267,21 +250,14 @@ void MatrixMultiplier::multiply_on_sep_weights_on_gpu()
         computeEncoder->setBuffer(m_device_buffer_X_ptr, 0, 2);
         computeEncoder->setBuffer(m_device_buffer_params_ptr, 0, 3);
 
-        // Note: The kernel thread's 'x' position in the grid corresponds to the column index in the result matrix
-        // and the 'y' position corresponds to the row index. Note that the matrix is in row-major so that the
-        // column index is the "fast" index.
-        
-        // 8-32 threads per dim per group seem to work fine.
-        // Both of these values must be the same!
         const int x_threads_per_group = 8;
         const int y_threads_per_group = 8;
         assert(x_threads_per_group == y_threads_per_group);
-        
-        // The number of thread groups (i.e., blocks) per grid.
+
         const int x_group_count = (m_cols_X + x_threads_per_group - 1) / x_threads_per_group;
         const int y_group_count = (m_rows_X + y_threads_per_group - 1) / y_threads_per_group;
-        MTL::Size thread_group_count = MTL::Size::Make(x_group_count, y_group_count, 1); // should be the size of the grid = (x_threads, y_threads)
-        MTL::Size threadgroupSize = MTL::Size::Make(x_threads_per_group, y_threads_per_group, 1); //
+        MTL::Size thread_group_count = MTL::Size::Make(x_group_count, y_group_count, 1);
+        MTL::Size threadgroupSize = MTL::Size::Make(x_threads_per_group, y_threads_per_group, 1);
         computeEncoder->dispatchThreadgroups(thread_group_count, threadgroupSize);
         
         // next layer's input is this layer's output
@@ -291,10 +267,51 @@ void MatrixMultiplier::multiply_on_sep_weights_on_gpu()
     }
 
     computeEncoder->endEncoding();
-
-    // Start the shader!
     commandBuffer->commit();
-    // Shader is still running here. Put other code here if you like.
+    commandBuffer->waitUntilCompleted();
+}
+
+// FOR LOCAL TESTING
+void MatrixMultiplier::multiply_on_batch_weights_on_gpu()
+{
+    MatMulParams *params = (MatMulParams *)m_device_buffer_params_ptr->contents();
+    params->row_dim_x = m_rows_X;
+    params->col_dim_x = m_cols_X;
+    params->inner_dim = m_cols_A;
+    // Setup
+    MTL::CommandBuffer *commandBuffer = m_CommandQueue->commandBuffer();
+    assert(commandBuffer != nullptr);
+
+    MTL::ComputeCommandEncoder *computeEncoder = commandBuffer->computeCommandEncoder();
+    assert(computeEncoder != nullptr);
+
+    computeEncoder->setComputePipelineState(m_MatMultiplyFunctionPSO);
+
+    const long stride = (long) m_cols_A * m_cols_X * sizeof(float);
+    const long weights_size = stride * m_num_weights;
+    for (long offset = 0; offset < weights_size; offset = offset + stride) {
+        computeEncoder->setBuffer(m_device_buffer_A_ptr, 0, 0);
+        computeEncoder->setBuffer(m_device_buffer_B_ptr, offset, 1);
+        computeEncoder->setBuffer(m_device_buffer_X_ptr, 0, 2);
+        computeEncoder->setBuffer(m_device_buffer_params_ptr, 0, 3);
+
+        const int x_threads_per_group = 8;
+        const int y_threads_per_group = 8;
+        assert(x_threads_per_group == y_threads_per_group);
+
+        const int x_group_count = (m_cols_X + x_threads_per_group - 1) / x_threads_per_group;
+        const int y_group_count = (m_rows_X + y_threads_per_group - 1) / y_threads_per_group;
+        MTL::Size thread_group_count = MTL::Size::Make(x_group_count, y_group_count, 1);
+        MTL::Size threadgroupSize = MTL::Size::Make(x_threads_per_group, y_threads_per_group, 1);
+        computeEncoder->dispatchThreadgroups(thread_group_count, threadgroupSize);
+
+        MTL::Buffer* tmp = m_device_buffer_A_ptr;
+        m_device_buffer_A_ptr = m_device_buffer_X_ptr;
+        m_device_buffer_X_ptr = tmp;
+    }
+
+    computeEncoder->endEncoding();
+    commandBuffer->commit();
     commandBuffer->waitUntilCompleted();
 }
 
