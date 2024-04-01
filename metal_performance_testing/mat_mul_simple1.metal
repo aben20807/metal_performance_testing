@@ -35,6 +35,7 @@ kernel void mat_mul_simple1(device const float* A,
 
             sum += A[index_A] * B[index_B];
         }
-        X[index] = sum;
+        // scales output to prevent growth to inf
+        X[index] = (sum > 1) ? 1 / sum : sum;
     }
 }

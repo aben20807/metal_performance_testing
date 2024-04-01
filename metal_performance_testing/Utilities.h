@@ -105,7 +105,7 @@ void randomize_uniform(MatrixF &A, float min, float max);
 /**
  * FOR LOCAL TESTING
  */
-void dummy_randomize(MatrixF &A, float min, float max);
+void dummy_randomize(MatrixF &A);
 
 void assert_almost_equal_relative_error(const MatrixF &A, const MatrixF &B, float tolerance = 1.0e-3f);
 

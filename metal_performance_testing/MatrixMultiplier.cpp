@@ -92,7 +92,7 @@ void MatrixMultiplier::batch_allocate_memory(int rows_X, int cols_X, int inner_d
 
     m_device_buffer_A_ptr = m_device_ptr->newBuffer(m_rows_X * m_cols_A * sizeof(float), MTL::ResourceStorageModeShared);
     m_device_buffer_B_ptr = m_device_ptr->newBuffer(weights_length, MTL::ResourceStorageModeShared);
-    cout << m_device_buffer_B_ptr->length() << " bytes" << endl;
+    cout << "buffer B length: " << m_device_buffer_B_ptr->length() << " bytes" << endl;
     m_device_buffer_X_ptr = m_device_ptr->newBuffer(m_rows_X * m_cols_X * sizeof(float), MTL::ResourceStorageModeShared);
 
     m_device_buffer_params_ptr = m_device_ptr->newBuffer(sizeof(MatMulParams), MTL::ResourceStorageModeShared);
@@ -151,19 +151,19 @@ void MatrixMultiplier::batch_initialize_data()
     Matrix<float> A(static_cast<float *>(m_device_buffer_A_ptr->contents()), {m_rows_X, m_cols_A});
     Matrix<float> B(static_cast<float *>(m_device_buffer_B_ptr->contents()), {m_num_weights, m_cols_A, m_cols_X});
 
-    dummy_randomize(A, -1.0f, 1.0f);
-    dummy_randomize(B, -1.0f, 1.0f);
+    dummy_randomize(A);
+    dummy_randomize(B);
 }
 
 // FOR LOCAL TESTING
 void MatrixMultiplier::sep_initialize_data()
 {
     Matrix<float> A(static_cast<float *>(m_device_buffer_A_ptr->contents()), {m_rows_X, m_cols_A});
-    dummy_randomize(A, -1.0f, 1.0f);
+    dummy_randomize(A);
 
     for (int i = 0; i < m_num_weights; ++i) {
         Matrix<float> B(static_cast<float *>(m_device_buffer_weight_ptrs[i]->contents()), {m_cols_A, m_cols_X});
-        dummy_randomize(B, -1.0f, 1.0f);
+        dummy_randomize(B);
     }
 }
 
@@ -235,16 +235,16 @@ void MatrixMultiplier::multiply_on_sep_weights_on_gpu()
     params->row_dim_x = m_rows_X;
     params->col_dim_x = m_cols_X;
     params->inner_dim = m_cols_A;
-    // Setup
-    MTL::CommandBuffer *commandBuffer = m_CommandQueue->commandBuffer();
-    assert(commandBuffer != nullptr);
-
-    MTL::ComputeCommandEncoder *computeEncoder = commandBuffer->computeCommandEncoder();
-    assert(computeEncoder != nullptr);
-
-    computeEncoder->setComputePipelineState(m_MatMultiplyFunctionPSO);
 
     for (int i = 0; i < m_num_weights; ++i) {
+        MTL::CommandBuffer *commandBuffer = m_CommandQueue->commandBuffer();
+        assert(commandBuffer != nullptr);
+
+        MTL::ComputeCommandEncoder *computeEncoder = commandBuffer->computeCommandEncoder();
+        assert(computeEncoder != nullptr);
+
+        computeEncoder->setComputePipelineState(m_MatMultiplyFunctionPSO);
+
         computeEncoder->setBuffer(m_device_buffer_A_ptr, 0, 0);
         computeEncoder->setBuffer(m_device_buffer_weight_ptrs[i], 0, 1);
         computeEncoder->setBuffer(m_device_buffer_X_ptr, 0, 2);
@@ -264,11 +264,11 @@ void MatrixMultiplier::multiply_on_sep_weights_on_gpu()
         MTL::Buffer* tmp = m_device_buffer_A_ptr;
         m_device_buffer_A_ptr = m_device_buffer_X_ptr;
         m_device_buffer_X_ptr = tmp;
-    }
 
-    computeEncoder->endEncoding();
-    commandBuffer->commit();
-    commandBuffer->waitUntilCompleted();
+        computeEncoder->endEncoding();
+        commandBuffer->commit();
+        commandBuffer->waitUntilCompleted();
+    }
 }
 
 // FOR LOCAL TESTING
@@ -278,18 +278,22 @@ void MatrixMultiplier::multiply_on_batch_weights_on_gpu()
     params->row_dim_x = m_rows_X;
     params->col_dim_x = m_cols_X;
     params->inner_dim = m_cols_A;
-    // Setup
-    MTL::CommandBuffer *commandBuffer = m_CommandQueue->commandBuffer();
-    assert(commandBuffer != nullptr);
-
-    MTL::ComputeCommandEncoder *computeEncoder = commandBuffer->computeCommandEncoder();
-    assert(computeEncoder != nullptr);
-
-    computeEncoder->setComputePipelineState(m_MatMultiplyFunctionPSO);
 
     const long stride = (long) m_cols_A * m_cols_X * sizeof(float);
     const long weights_size = stride * m_num_weights;
     for (long offset = 0; offset < weights_size; offset = offset + stride) {
+        /*
+        "You can’t reuse a buffer after you commit it"
+        https://developer.apple.com/documentation/metal/gpu_devices_and_work_submission/setting_up_a_command_structure?language=objc
+        */
+        MTL::CommandBuffer *commandBuffer = m_CommandQueue->commandBuffer();
+        assert(commandBuffer != nullptr);
+
+        MTL::ComputeCommandEncoder *computeEncoder = commandBuffer->computeCommandEncoder();
+        assert(computeEncoder != nullptr);
+
+        computeEncoder->setComputePipelineState(m_MatMultiplyFunctionPSO);
+
         computeEncoder->setBuffer(m_device_buffer_A_ptr, 0, 0);
         computeEncoder->setBuffer(m_device_buffer_B_ptr, offset, 1);
         computeEncoder->setBuffer(m_device_buffer_X_ptr, 0, 2);
@@ -308,11 +312,11 @@ void MatrixMultiplier::multiply_on_batch_weights_on_gpu()
         MTL::Buffer* tmp = m_device_buffer_A_ptr;
         m_device_buffer_A_ptr = m_device_buffer_X_ptr;
         m_device_buffer_X_ptr = tmp;
-    }
 
-    computeEncoder->endEncoding();
-    commandBuffer->commit();
-    commandBuffer->waitUntilCompleted();
+        computeEncoder->endEncoding();
+        commandBuffer->commit();
+        commandBuffer->waitUntilCompleted();
+    }
 }
 
 void MatrixMultiplier::run_multiply_on_gpu_mat_mul_opt1()

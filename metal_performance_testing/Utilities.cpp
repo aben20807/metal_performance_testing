@@ -98,7 +98,7 @@ void randomize_uniform(MatrixF &A, float min, float max)
     }
 }
 
-void dummy_randomize(MatrixF &A, float min, float max)
+void dummy_randomize(MatrixF &A)
 {
     for (long i = 0; i < A.size(); i++)
     {
