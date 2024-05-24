@@ -92,9 +92,17 @@ void randomize_uniform(MatrixF &A, float min, float max)
     static std::mt19937 mersenne_twister_engine(rand_dev());
     // mersenne_twister_engine.seed(static_cast<unsigned long>(time(NULL)));
     std::uniform_real_distribution<float> uni(min, max);
-    for (int i = 0; i < A.size(); i++)
+    for (long i = 0; i < A.size(); i++)
     {
         A[i] = uni(mersenne_twister_engine);
+    }
+}
+
+void dummy_randomize(MatrixF &A)
+{
+    for (long i = 0; i < A.size(); i++)
+    {
+        A[i] = (float) i / A.size();
     }
 }
 
