@@ -10,6 +10,8 @@
 #include "ShaderParams.h"
 #include "Utilities.h"
 #include <iostream>
+#include <chrono>
+#include <thread>
 #include <stdio.h>
 
 using namespace std;
@@ -105,6 +107,10 @@ void MatrixMultiplier::sep_allocate_memory(int rows_X, int cols_X, int inner_dim
     m_cols_X = cols_X;
     m_cols_A = inner_dim;
     m_num_weights = num_weights;
+
+    unsigned long weights_length = (unsigned long) m_cols_A * m_cols_X * sizeof(float);
+    cout << "size of weights to be allocated: " << m_num_weights << " * " 
+         << weights_length << " = " << m_num_weights * weights_length <<" bytes" << endl;
 
     // Allocate shared GPU/CPU buffers for the matrices.
     m_device_buffer_A_ptr = m_device_ptr->newBuffer(m_rows_X * m_cols_A * sizeof(float), MTL::ResourceStorageModeShared);
@@ -229,7 +235,7 @@ void MatrixMultiplier::run_multiply_on_gpu()
 }
 
 // FOR LOCAL TESTING
-void MatrixMultiplier::multiply_on_sep_weights_on_gpu()
+void MatrixMultiplier::multiply_on_sep_weights_on_gpu(int sleep_ms)
 {
     MatMulParams *params = (MatMulParams *)m_device_buffer_params_ptr->contents();
     params->row_dim_x = m_rows_X;
@@ -237,6 +243,9 @@ void MatrixMultiplier::multiply_on_sep_weights_on_gpu()
     params->inner_dim = m_cols_A;
 
     for (int i = 0; i < m_num_weights; ++i) {
+        if (sleep_ms > 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
+        }
         MTL::CommandBuffer *commandBuffer = m_CommandQueue->commandBuffer();
         assert(commandBuffer != nullptr);
 
@@ -272,7 +281,7 @@ void MatrixMultiplier::multiply_on_sep_weights_on_gpu()
 }
 
 // FOR LOCAL TESTING
-void MatrixMultiplier::multiply_on_batch_weights_on_gpu()
+void MatrixMultiplier::multiply_on_batch_weights_on_gpu(int sleep_ms)
 {
     MatMulParams *params = (MatMulParams *)m_device_buffer_params_ptr->contents();
     params->row_dim_x = m_rows_X;
@@ -286,6 +295,9 @@ void MatrixMultiplier::multiply_on_batch_weights_on_gpu()
         "You can’t reuse a buffer after you commit it"
         https://developer.apple.com/documentation/metal/gpu_devices_and_work_submission/setting_up_a_command_structure?language=objc
         */
+        if (sleep_ms > 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
+        }
         MTL::CommandBuffer *commandBuffer = m_CommandQueue->commandBuffer();
         assert(commandBuffer != nullptr);
 

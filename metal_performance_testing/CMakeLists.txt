@@ -10,7 +10,14 @@ find_library(APPLE_FWK_QUARTZ_CORE QuartzCore REQUIRED)
 find_library(APPLE_FWK_METAL Metal REQUIRED)
 find_library(APPLE_FWK_ACCELERATE Accelerate REQUIRED)
 
-add_executable(metal_performance_testing
+
+add_library( LOAD_SEP INTERFACE )
+set( LOAD_SEP_OPTS "" )
+target_compile_options( LOAD_SEP BEFORE INTERFACE ${LOAD_SEP_OPTS} )
+target_compile_definitions( LOAD_SEP INTERFACE -DLOAD_SEP )
+target_link_options( LOAD_SEP BEFORE INTERFACE  ${LOAD_SEP_OPTS} )
+
+add_executable(metal_performance_testing_sep
     Assertions.cpp
     Matrix.cpp
     MatrixMultiplier.cpp
@@ -18,13 +25,41 @@ add_executable(metal_performance_testing
     main.cpp
 )
 
-target_include_directories(metal_performance_testing
+target_include_directories(metal_performance_testing_sep
   SYSTEM PUBLIC ${CMAKE_SOURCE_DIR}/metal-cpp
 )
 
-target_link_libraries(metal_performance_testing
+target_link_libraries(metal_performance_testing_sep
   ${APPLE_FWK_FOUNDATION}
   ${APPLE_FWK_QUARTZ_CORE}
   ${APPLE_FWK_METAL}
   ${APPLE_FWK_ACCELERATE}
+  LOAD_SEP
+)
+
+
+add_library( LOAD_BATCH INTERFACE )
+set( LOAD_BATCH_OPTS "" )
+target_compile_options( LOAD_BATCH BEFORE INTERFACE ${LOAD_BATCH_OPTS} )
+target_compile_definitions( LOAD_BATCH INTERFACE -DLOAD_BATCH )
+target_link_options( LOAD_BATCH BEFORE INTERFACE  ${LOAD_BATCH_OPTS} )
+
+add_executable(metal_performance_testing_batch
+    Assertions.cpp
+    Matrix.cpp
+    MatrixMultiplier.cpp
+    Utilities.cpp
+    main.cpp
+)
+
+target_include_directories(metal_performance_testing_batch
+  SYSTEM PUBLIC ${CMAKE_SOURCE_DIR}/metal-cpp
+)
+
+target_link_libraries(metal_performance_testing_batch
+  ${APPLE_FWK_FOUNDATION}
+  ${APPLE_FWK_QUARTZ_CORE}
+  ${APPLE_FWK_METAL}
+  ${APPLE_FWK_ACCELERATE}
+  LOAD_BATCH
 )

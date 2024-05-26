@@ -135,7 +135,7 @@ float benchmark(int loop_count, Func func) {
     auto t1 = std::chrono::high_resolution_clock::now();
     auto time_in_microseconds = duration_cast<std::chrono::microseconds>(t1 - t0).count();
     float time_per_call = static_cast<float>(time_in_microseconds)/static_cast<float>(loop_count);
-    std::cout << "Time per call: " << time_per_call << " microseconds" << std::endl;
+    // std::cout << "Time per call: " << time_per_call << " microseconds" << std::endl;
     return time_per_call;
 }
 

@@ -70,12 +70,12 @@ public:
     /**
      * FOR LOCAL TESTING
      */
-    void multiply_on_sep_weights_on_gpu();
+    void multiply_on_sep_weights_on_gpu(int sleep_ms = 0);
 
     /**
      * FOR LOCAL TESTING
      */
-    void multiply_on_batch_weights_on_gpu();
+    void multiply_on_batch_weights_on_gpu(int sleep_ms = 0);
 
     /**
      * Run shader "mat_mul_opt1".
