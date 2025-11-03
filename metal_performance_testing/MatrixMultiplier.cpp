@@ -154,22 +154,37 @@ void MatrixMultiplier::initialize_data()
 // FOR LOCAL TESTING
 void MatrixMultiplier::batch_initialize_data()
 {
-    Matrix<float> A(static_cast<float *>(m_device_buffer_A_ptr->contents()), {m_rows_X, m_cols_A});
-    Matrix<float> B(static_cast<float *>(m_device_buffer_B_ptr->contents()), {m_num_weights, m_cols_A, m_cols_X});
+    // For very large buffers (10GB+), avoid Matrix wrapper overhead
+    // and use direct pointer access for better stability
+    float* a_data = static_cast<float*>(m_device_buffer_A_ptr->contents());
+    long a_size = m_rows_X * m_cols_A;
+    for (long i = 0; i < a_size; i++) {
+        a_data[i] = (float)i / a_size;
+    }
 
-    dummy_randomize(A);
-    dummy_randomize(B);
+    float* b_data = static_cast<float*>(m_device_buffer_B_ptr->contents());
+    long long b_size = (long long)m_num_weights * m_cols_A * m_cols_X;
+    for (long long i = 0; i < b_size; i++) {
+        b_data[i] = (float)i / b_size;
+    }
 }
 
 // FOR LOCAL TESTING
 void MatrixMultiplier::sep_initialize_data()
 {
-    Matrix<float> A(static_cast<float *>(m_device_buffer_A_ptr->contents()), {m_rows_X, m_cols_A});
-    dummy_randomize(A);
+    // For consistency with batch version, use direct pointer access
+    float* a_data = static_cast<float*>(m_device_buffer_A_ptr->contents());
+    long a_size = m_rows_X * m_cols_A;
+    for (long i = 0; i < a_size; i++) {
+        a_data[i] = (float)i / a_size;
+    }
 
     for (int i = 0; i < m_num_weights; ++i) {
-        Matrix<float> B(static_cast<float *>(m_device_buffer_weight_ptrs[i]->contents()), {m_cols_A, m_cols_X});
-        dummy_randomize(B);
+        float* b_data = static_cast<float*>(m_device_buffer_weight_ptrs[i]->contents());
+        long b_size = m_cols_A * m_cols_X;
+        for (long j = 0; j < b_size; j++) {
+            b_data[j] = (float)j / b_size;
+        }
     }
 }
 

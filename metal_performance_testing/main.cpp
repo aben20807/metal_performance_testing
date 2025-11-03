@@ -43,7 +43,7 @@ void run_mat_mult() {
     const int rows_X = 1;
     const int cols_X = 6144;
     const int inner_dim = 10752;
-    const int layers = 30; // batch cause bus error // 40: layers; 3: Q,K,V; 2: bf16
+    const int layers = 40;
     const int num_of_experts = 4;
     const int sleep_ms = 1000;
     const int n_samples = 5;
